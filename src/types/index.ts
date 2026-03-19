@@ -18,6 +18,8 @@ export interface ApiKey {
   todayRequestCount: number;
   effectiveDailyLimit: number | null;
   remainingRequests: number | null;
+  allowedDomains: string[];
+  allowedIps: string[];
 }
 
 export interface DashboardStats {

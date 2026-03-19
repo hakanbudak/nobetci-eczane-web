@@ -14,7 +14,7 @@ import {
     DialogTrigger,
     DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Copy, Trash2, Check, Eye, EyeOff, RefreshCw, RotateCcw } from "lucide-react";
+import { Plus, Copy, Trash2, Check, Eye, EyeOff, RefreshCw, RotateCcw, Shield, X } from "lucide-react";
 import toast from "react-hot-toast";
 
 function maskKey(key: string) {
@@ -24,7 +24,7 @@ function maskKey(key: string) {
 }
 
 export default function ApiKeysPage() {
-    const { apiKeys, fetchApiKeys, addApiKey, deleteApiKey, regenerateToken } = useAppStore();
+    const { apiKeys, fetchApiKeys, addApiKey, deleteApiKey, regenerateToken, updateRestrictions } = useAppStore();
     const [newKeyName, setNewKeyName] = useState("");
     const [createdKey, setCreatedKey] = useState<string | null>(null);
     const [open, setOpen] = useState(false);
@@ -37,6 +37,14 @@ export default function ApiKeysPage() {
     const [loading, setLoading] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [fetchLoading, setFetchLoading] = useState(true);
+
+    // Restrictions dialog state
+    const [restrictId, setRestrictId] = useState<string | null>(null);
+    const [domainInput, setDomainInput] = useState("");
+    const [ipInput, setIpInput] = useState("");
+    const [editDomains, setEditDomains] = useState<string[]>([]);
+    const [editIps, setEditIps] = useState<string[]>([]);
+    const [restrictSaving, setRestrictSaving] = useState(false);
 
     useEffect(() => {
         fetchApiKeys().finally(() => setFetchLoading(false));
@@ -77,6 +85,43 @@ export default function ApiKeysPage() {
             setRegenerateId(null);
         } finally {
             setRegeneratingId(null);
+        }
+    };
+
+    const openRestrictions = (id: string) => {
+        const key = apiKeys.find((k) => k.id === id);
+        setEditDomains(key?.allowedDomains ?? []);
+        setEditIps(key?.allowedIps ?? []);
+        setDomainInput("");
+        setIpInput("");
+        setRestrictId(id);
+    };
+
+    const addDomain = () => {
+        const v = domainInput.trim().toLowerCase();
+        if (!v || editDomains.includes(v)) return;
+        setEditDomains((d) => [...d, v]);
+        setDomainInput("");
+    };
+
+    const addIp = () => {
+        const v = ipInput.trim();
+        if (!v || editIps.includes(v)) return;
+        setEditIps((d) => [...d, v]);
+        setIpInput("");
+    };
+
+    const handleSaveRestrictions = async () => {
+        if (!restrictId) return;
+        setRestrictSaving(true);
+        try {
+            await updateRestrictions(restrictId, editDomains, editIps);
+            toast.success("Kısıtlamalar kaydedildi");
+            setRestrictId(null);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Kaydetme başarısız");
+        } finally {
+            setRestrictSaving(false);
         }
     };
 
@@ -303,6 +348,132 @@ export default function ApiKeysPage() {
                                 </div>
 
                                 <div className="flex items-center gap-2">
+                                    {/* Restrictions dialog */}
+                                    <Dialog
+                                        open={restrictId === apiKey.id}
+                                        onOpenChange={(o) => !o && setRestrictId(null)}
+                                    >
+                                        <DialogTrigger asChild>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => openRestrictions(apiKey.id)}
+                                                className={
+                                                    apiKey.allowedDomains.length > 0 || apiKey.allowedIps.length > 0
+                                                        ? "text-brand-green"
+                                                        : "text-text-muted hover:text-brand-green"
+                                                }
+                                                title="Kısıtlamalar"
+                                            >
+                                                <Shield className="w-4 h-4" />
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent className="bg-navy-900 border-navy-700 text-text-primary max-w-md">
+                                            <DialogHeader>
+                                                <DialogTitle>Erişim Kısıtlamaları — {apiKey.name}</DialogTitle>
+                                            </DialogHeader>
+                                            <p className="text-xs text-text-muted -mt-1">
+                                                Boş bırakılırsa her yerden istek kabul edilir.
+                                            </p>
+
+                                            <div className="space-y-5 py-2">
+                                                {/* Domains */}
+                                                <div>
+                                                    <Label className="text-text-primary mb-2 block text-sm">
+                                                        İzin Verilen Domain&apos;ler
+                                                    </Label>
+                                                    <div className="flex gap-2 mb-2">
+                                                        <Input
+                                                            placeholder="ornek.com veya *.ornek.com"
+                                                            value={domainInput}
+                                                            onChange={(e) => setDomainInput(e.target.value)}
+                                                            onKeyDown={(e) => e.key === "Enter" && addDomain()}
+                                                            className="bg-navy-800 border-navy-700 text-sm h-9"
+                                                        />
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            onClick={addDomain}
+                                                            className="bg-brand-green hover:bg-brand-green-dark text-navy-950 h-9 px-3"
+                                                        >
+                                                            <Plus className="w-4 h-4" />
+                                                        </Button>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-1.5 min-h-[28px]">
+                                                        {editDomains.length === 0 ? (
+                                                            <span className="text-xs text-text-muted italic">Kısıtlama yok</span>
+                                                        ) : editDomains.map((d) => (
+                                                            <span key={d} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-navy-800 border border-navy-700 text-xs font-mono text-text-primary">
+                                                                {d}
+                                                                <button onClick={() => setEditDomains((prev) => prev.filter((x) => x !== d))} className="text-text-muted hover:text-red-400 ml-0.5">
+                                                                    <X className="w-3 h-3" />
+                                                                </button>
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* IPs */}
+                                                <div>
+                                                    <Label className="text-text-primary mb-2 block text-sm">
+                                                        İzin Verilen IP Adresleri
+                                                    </Label>
+                                                    <div className="flex gap-2 mb-2">
+                                                        <Input
+                                                            placeholder="192.168.1.1 veya 10.0.0.0/24"
+                                                            value={ipInput}
+                                                            onChange={(e) => setIpInput(e.target.value)}
+                                                            onKeyDown={(e) => e.key === "Enter" && addIp()}
+                                                            className="bg-navy-800 border-navy-700 text-sm h-9"
+                                                        />
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            onClick={addIp}
+                                                            className="bg-brand-green hover:bg-brand-green-dark text-navy-950 h-9 px-3"
+                                                        >
+                                                            <Plus className="w-4 h-4" />
+                                                        </Button>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-1.5 min-h-[28px]">
+                                                        {editIps.length === 0 ? (
+                                                            <span className="text-xs text-text-muted italic">Kısıtlama yok</span>
+                                                        ) : editIps.map((ip) => (
+                                                            <span key={ip} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-navy-800 border border-navy-700 text-xs font-mono text-text-primary">
+                                                                {ip}
+                                                                <button onClick={() => setEditIps((prev) => prev.filter((x) => x !== ip))} className="text-text-muted hover:text-red-400 ml-0.5">
+                                                                    <X className="w-3 h-3" />
+                                                                </button>
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <DialogFooter>
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => setRestrictId(null)}
+                                                    className="border-navy-700 text-text-primary bg-transparent"
+                                                >
+                                                    İptal
+                                                </Button>
+                                                <Button
+                                                    onClick={handleSaveRestrictions}
+                                                    disabled={restrictSaving}
+                                                    className="bg-brand-green hover:bg-brand-green-dark text-navy-950"
+                                                >
+                                                    {restrictSaving ? (
+                                                        <span className="flex items-center gap-2">
+                                                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                                            Kaydediliyor...
+                                                        </span>
+                                                    ) : "Kaydet"}
+                                                </Button>
+                                            </DialogFooter>
+                                        </DialogContent>
+                                    </Dialog>
+
                                     {/* Regenerate token dialog */}
                                     <Dialog
                                         open={regenerateId === apiKey.id}

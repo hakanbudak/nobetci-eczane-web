@@ -48,6 +48,8 @@ function mapApiClient(c: any): ApiKey {
         todayRequestCount: c.today_request_count ?? 0,
         effectiveDailyLimit: c.effective_daily_limit ?? null,
         remainingRequests: c.remaining_requests ?? null,
+        allowedDomains: c.allowed_domains ?? [],
+        allowedIps: c.allowed_ips ?? [],
     };
 }
 
@@ -100,6 +102,7 @@ interface AppState {
     addApiKey: (name: string) => Promise<ApiKey>;
     deleteApiKey: (id: string) => Promise<void>;
     regenerateToken: (id: string) => Promise<string>;
+    updateRestrictions: (id: string, allowedDomains: string[], allowedIps: string[]) => Promise<void>;
 
     toggleSidebar: () => void;
     setSidebarOpen: (open: boolean) => void;
@@ -222,6 +225,18 @@ export const useAppStore = create<AppState>((set, get) => ({
     deleteApiKey: async (id: string) => {
         await apiFetch(`/auth/api-clients/${id}/`, { method: 'DELETE' });
         set((state) => ({ apiKeys: state.apiKeys.filter((k) => k.id !== id) }));
+    },
+
+    updateRestrictions: async (id: string, allowedDomains: string[], allowedIps: string[]) => {
+        await apiFetch(`/auth/api-clients/${id}/`, {
+            method: 'PATCH',
+            body: JSON.stringify({ allowed_domains: allowedDomains, allowed_ips: allowedIps }),
+        });
+        set((state) => ({
+            apiKeys: state.apiKeys.map((k) =>
+                k.id === id ? { ...k, allowedDomains, allowedIps } : k
+            ),
+        }));
     },
 
     regenerateToken: async (id: string) => {
