@@ -5,21 +5,58 @@ import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
-import { User, Lock, Bell, Trash2 } from "lucide-react";
+import { User, Lock, Trash2, RefreshCw } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function SettingsPage() {
-    const user = useAppStore((s) => s.user);
-    const [name, setName] = useState(user?.name || "");
-    const [email, setEmail] = useState(user?.email || "");
-    const [emailNotif, setEmailNotif] = useState(true);
-    const [quotaNotif, setQuotaNotif] = useState(true);
-    const [weeklyReport, setWeeklyReport] = useState(false);
+    const { user, updateUserProfile, changePassword } = useAppStore();
 
-    const handleSave = () => {
-        toast.success("Ayarlar kaydedildi");
+    const [firstName, setFirstName] = useState(user?.name?.split(" ")[0] || "");
+    const [lastName, setLastName] = useState(user?.name?.split(" ").slice(1).join(" ") || "");
+    const [profileLoading, setProfileLoading] = useState(false);
+
+    const [currentPassword, setCurrentPassword] = useState("");
+    const [newPassword, setNewPassword] = useState("");
+    const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
+    const [passwordLoading, setPasswordLoading] = useState(false);
+
+    const handleSaveProfile = async () => {
+        setProfileLoading(true);
+        try {
+            await updateUserProfile(firstName, lastName);
+            toast.success("Profil güncellendi");
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Güncelleme başarısız");
+        } finally {
+            setProfileLoading(false);
+        }
+    };
+
+    const handleChangePassword = async () => {
+        if (!currentPassword || !newPassword || !newPasswordConfirm) {
+            toast.error("Lütfen tüm alanları doldurun");
+            return;
+        }
+        if (newPassword !== newPasswordConfirm) {
+            toast.error("Yeni şifreler eşleşmiyor");
+            return;
+        }
+        if (newPassword.length < 8) {
+            toast.error("Şifre en az 8 karakter olmalıdır");
+            return;
+        }
+        setPasswordLoading(true);
+        try {
+            await changePassword(currentPassword, newPassword);
+            toast.success("Şifre güncellendi");
+            setCurrentPassword("");
+            setNewPassword("");
+            setNewPasswordConfirm("");
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Şifre güncellenemedi");
+        } finally {
+            setPasswordLoading(false);
+        }
     };
 
     return (
@@ -36,44 +73,54 @@ export default function SettingsPage() {
                         <User className="w-5 h-5 text-brand-green" />
                     </div>
                     <div>
-                        <h3 className="text-base font-semibold text-text-primary">
-                            Profil Bilgileri
-                        </h3>
-                        <p className="text-xs text-text-muted">
-                            İsim ve e-posta adresinizi güncelleyin
-                        </p>
+                        <h3 className="text-base font-semibold text-text-primary">Profil Bilgileri</h3>
+                        <p className="text-xs text-text-muted">İsim ve e-posta adresinizi güncelleyin</p>
                     </div>
                 </div>
 
                 <div className="space-y-4">
-                    <div>
-                        <Label htmlFor="settings-name" className="text-text-primary mb-2 block">
-                            Ad Soyad
-                        </Label>
-                        <Input
-                            id="settings-name"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            className="bg-navy-800 border-navy-700 text-text-primary"
-                        />
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <Label htmlFor="first-name" className="text-text-primary mb-2 block">Ad</Label>
+                            <Input
+                                id="first-name"
+                                value={firstName}
+                                onChange={(e) => setFirstName(e.target.value)}
+                                className="bg-navy-800 border-navy-700 text-text-primary"
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="last-name" className="text-text-primary mb-2 block">Soyad</Label>
+                            <Input
+                                id="last-name"
+                                value={lastName}
+                                onChange={(e) => setLastName(e.target.value)}
+                                className="bg-navy-800 border-navy-700 text-text-primary"
+                            />
+                        </div>
                     </div>
                     <div>
-                        <Label htmlFor="settings-email" className="text-text-primary mb-2 block">
-                            E-posta
-                        </Label>
+                        <Label className="text-text-primary mb-2 block">E-posta</Label>
                         <Input
-                            id="settings-email"
                             type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="bg-navy-800 border-navy-700 text-text-primary"
+                            value={user?.email || ""}
+                            disabled
+                            className="bg-navy-800/50 border-navy-700 text-text-muted cursor-not-allowed"
                         />
                     </div>
                     <Button
-                        onClick={handleSave}
+                        onClick={handleSaveProfile}
+                        disabled={profileLoading}
                         className="bg-brand-green hover:bg-brand-green-dark text-navy-950 font-semibold"
                     >
-                        Kaydet
+                        {profileLoading ? (
+                            <span className="flex items-center gap-2">
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                                Kaydediliyor...
+                            </span>
+                        ) : (
+                            "Kaydet"
+                        )}
                     </Button>
                 </div>
             </div>
@@ -85,12 +132,8 @@ export default function SettingsPage() {
                         <Lock className="w-5 h-5 text-brand-blue" />
                     </div>
                     <div>
-                        <h3 className="text-base font-semibold text-text-primary">
-                            Şifre Değiştir
-                        </h3>
-                        <p className="text-xs text-text-muted">
-                            Hesap şifrenizi güncelleyin
-                        </p>
+                        <h3 className="text-base font-semibold text-text-primary">Şifre Değiştir</h3>
+                        <p className="text-xs text-text-muted">Hesap şifrenizi güncelleyin</p>
                     </div>
                 </div>
 
@@ -100,6 +143,8 @@ export default function SettingsPage() {
                         <Input
                             type="password"
                             placeholder="••••••••"
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
                             className="bg-navy-800 border-navy-700 text-text-primary"
                         />
                     </div>
@@ -108,66 +153,35 @@ export default function SettingsPage() {
                         <Input
                             type="password"
                             placeholder="En az 8 karakter"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
                             className="bg-navy-800 border-navy-700 text-text-primary"
                         />
                     </div>
                     <div>
-                        <Label className="text-text-primary mb-2 block">
-                            Yeni Şifre (Tekrar)
-                        </Label>
+                        <Label className="text-text-primary mb-2 block">Yeni Şifre (Tekrar)</Label>
                         <Input
                             type="password"
                             placeholder="••••••••"
+                            value={newPasswordConfirm}
+                            onChange={(e) => setNewPasswordConfirm(e.target.value)}
                             className="bg-navy-800 border-navy-700 text-text-primary"
                         />
                     </div>
                     <Button
-                        onClick={() => toast.success("Şifre güncellendi")}
-                        className="bg-brand-blue hover:bg-brand-blue-dark text-white font-semibold"
+                        onClick={handleChangePassword}
+                        disabled={passwordLoading}
+                        className="bg-brand-blue hover:bg-brand-blue/80 text-white font-semibold"
                     >
-                        Şifreyi Güncelle
+                        {passwordLoading ? (
+                            <span className="flex items-center gap-2">
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                                Güncelleniyor...
+                            </span>
+                        ) : (
+                            "Şifreyi Güncelle"
+                        )}
                     </Button>
-                </div>
-            </div>
-
-            {/* Notifications */}
-            <div className="rounded-xl border border-navy-700/50 bg-navy-900/50 p-6">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-lg bg-purple-400/10 border border-purple-400/20 flex items-center justify-center">
-                        <Bell className="w-5 h-5 text-purple-400" />
-                    </div>
-                    <div>
-                        <h3 className="text-base font-semibold text-text-primary">
-                            Bildirim Tercihleri
-                        </h3>
-                        <p className="text-xs text-text-muted">
-                            Hangi bildirimleri almak istediğinizi seçin
-                        </p>
-                    </div>
-                </div>
-
-                <div className="space-y-4">
-                    {[
-                        { label: "E-posta Bildirimleri", desc: "Önemli güncellemeler ve duyurular", checked: emailNotif, onChange: setEmailNotif },
-                        { label: "Kota Uyarıları", desc: "Günlük kota limitine yaklaştığınızda", checked: quotaNotif, onChange: setQuotaNotif },
-                        { label: "Haftalık Rapor", desc: "API kullanım özetiniz her hafta e-posta ile", checked: weeklyReport, onChange: setWeeklyReport },
-                    ].map((item) => (
-                        <div
-                            key={item.label}
-                            className="flex items-center justify-between py-2"
-                        >
-                            <div>
-                                <p className="text-sm font-medium text-text-primary">
-                                    {item.label}
-                                </p>
-                                <p className="text-xs text-text-muted">{item.desc}</p>
-                            </div>
-                            <Switch
-                                checked={item.checked}
-                                onCheckedChange={item.onChange}
-                            />
-                        </div>
-                    ))}
                 </div>
             </div>
 
@@ -178,12 +192,8 @@ export default function SettingsPage() {
                         <Trash2 className="w-5 h-5 text-red-400" />
                     </div>
                     <div>
-                        <h3 className="text-base font-semibold text-red-400">
-                            Tehlikeli Bölge
-                        </h3>
-                        <p className="text-xs text-text-muted">
-                            Bu işlemler geri alınamaz
-                        </p>
+                        <h3 className="text-base font-semibold text-red-400">Tehlikeli Bölge</h3>
+                        <p className="text-xs text-text-muted">Bu işlemler geri alınamaz</p>
                     </div>
                 </div>
                 <p className="text-sm text-text-muted mb-4">
@@ -193,7 +203,7 @@ export default function SettingsPage() {
                 <Button
                     variant="outline"
                     className="border-red-500/30 text-red-400 hover:bg-red-500/10 bg-transparent"
-                    onClick={() => toast.error("Hesap silme devre dışı (demo)")}
+                    onClick={() => toast.error("Hesap silme devre dışı")}
                 >
                     Hesabı Sil
                 </Button>
