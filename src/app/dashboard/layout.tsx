@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
@@ -105,8 +105,22 @@ function SidebarContent({ pathname, onLogout }: { pathname: string; onLogout: ()
 export default function DashboardLayout({ children }: { children: ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
-    const { user, logout } = useAppStore();
+    const { user, logout, fetchUserProfile, fetchApiKeys } = useAppStore();
     const { theme, toggleTheme } = useTheme();
+
+    useEffect(() => {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            router.push('/login');
+            return;
+        }
+        if (!user) {
+            fetchUserProfile().catch(() => {
+                router.push('/login');
+            });
+            fetchApiKeys().catch(() => {});
+        }
+    }, []);
 
     const handleLogout = () => {
         logout();

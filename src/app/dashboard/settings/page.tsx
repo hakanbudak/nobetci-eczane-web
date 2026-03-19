@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,8 +11,16 @@ import toast from "react-hot-toast";
 export default function SettingsPage() {
     const { user, updateUserProfile, changePassword } = useAppStore();
 
-    const [firstName, setFirstName] = useState(user?.name?.split(" ")[0] || "");
-    const [lastName, setLastName] = useState(user?.name?.split(" ").slice(1).join(" ") || "");
+    const [firstName, setFirstName] = useState("");
+    const [lastName, setLastName] = useState("");
+
+    useEffect(() => {
+        if (user?.name) {
+            const parts = user.name.split(" ");
+            setFirstName(parts[0] || "");
+            setLastName(parts.slice(1).join(" ") || "");
+        }
+    }, [user?.name]);
     const [profileLoading, setProfileLoading] = useState(false);
 
     const [currentPassword, setCurrentPassword] = useState("");
