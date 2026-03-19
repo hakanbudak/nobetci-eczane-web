@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAppStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,31 +14,50 @@ import {
     DialogTrigger,
     DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Copy, Trash2, Check, Eye, EyeOff, Power } from "lucide-react";
+import { Plus, Copy, Trash2, Check, Eye, EyeOff, RefreshCw, RotateCcw } from "lucide-react";
 import toast from "react-hot-toast";
 
 function maskKey(key: string) {
-    return key.slice(0, 7) + "••••••••••••" + key.slice(-4);
+    if (!key) return "••••••••••••••••";
+    if (key.length < 20) return key + "••••••••••••";
+    return key.slice(0, 10) + "••••••••••••" + key.slice(-4);
 }
 
 export default function ApiKeysPage() {
-    const { apiKeys, addApiKey, deleteApiKey, toggleApiKey } = useAppStore();
+    const { apiKeys, fetchApiKeys, addApiKey, deleteApiKey, regenerateToken } = useAppStore();
     const [newKeyName, setNewKeyName] = useState("");
     const [createdKey, setCreatedKey] = useState<string | null>(null);
     const [open, setOpen] = useState(false);
     const [deleteId, setDeleteId] = useState<string | null>(null);
+    const [regenerateId, setRegenerateId] = useState<string | null>(null);
+    const [regeneratedKey, setRegeneratedKey] = useState<string | null>(null);
+    const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
     const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
     const [copied, setCopied] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [fetchLoading, setFetchLoading] = useState(true);
 
-    const handleCreate = () => {
+    useEffect(() => {
+        fetchApiKeys().finally(() => setFetchLoading(false));
+    }, [fetchApiKeys]);
+
+    const handleCreate = async () => {
         if (!newKeyName.trim()) {
             toast.error("Lütfen bir isim girin");
             return;
         }
-        const newKey = addApiKey(newKeyName.trim());
-        setCreatedKey(newKey.key);
-        setNewKeyName("");
-        toast.success("API Key oluşturuldu!");
+        setLoading(true);
+        try {
+            const newKey = await addApiKey(newKeyName.trim());
+            setCreatedKey(newKey.key);
+            setNewKeyName("");
+            toast.success("API Key oluşturuldu!");
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Oluşturma başarısız");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleCopy = (key: string, id: string) => {
@@ -48,10 +67,30 @@ export default function ApiKeysPage() {
         setTimeout(() => setCopied(null), 2000);
     };
 
-    const handleDelete = (id: string) => {
-        deleteApiKey(id);
-        setDeleteId(null);
-        toast.success("API Key silindi");
+    const handleRegenerate = async (id: string) => {
+        setRegeneratingId(id);
+        try {
+            const token = await regenerateToken(id);
+            setRegeneratedKey(token);
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Token yenileme başarısız");
+            setRegenerateId(null);
+        } finally {
+            setRegeneratingId(null);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        setDeletingId(id);
+        try {
+            await deleteApiKey(id);
+            setDeleteId(null);
+            toast.success("API Key silindi");
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Silme başarısız");
+        } finally {
+            setDeletingId(null);
+        }
     };
 
     return (
@@ -96,15 +135,24 @@ export default function ApiKeysPage() {
                                         placeholder="Production App"
                                         value={newKeyName}
                                         onChange={(e) => setNewKeyName(e.target.value)}
+                                        onKeyDown={(e) => e.key === "Enter" && handleCreate()}
                                         className="bg-navy-800 border-navy-700"
                                     />
                                 </div>
                                 <DialogFooter>
                                     <Button
                                         onClick={handleCreate}
+                                        disabled={loading}
                                         className="bg-brand-green hover:bg-brand-green-dark text-navy-950"
                                     >
-                                        Oluştur
+                                        {loading ? (
+                                            <span className="flex items-center gap-2">
+                                                <RefreshCw className="w-4 h-4 animate-spin" />
+                                                Oluşturuluyor...
+                                            </span>
+                                        ) : (
+                                            "Oluştur"
+                                        )}
                                     </Button>
                                 </DialogFooter>
                             </>
@@ -141,7 +189,11 @@ export default function ApiKeysPage() {
 
             {/* Keys list */}
             <div className="space-y-3">
-                {apiKeys.length === 0 ? (
+                {fetchLoading ? (
+                    <div className="text-center py-16">
+                        <RefreshCw className="w-6 h-6 animate-spin text-text-muted mx-auto" />
+                    </div>
+                ) : apiKeys.length === 0 ? (
                     <div className="text-center py-16 rounded-xl border border-navy-700/50 bg-navy-900/30">
                         <div className="w-16 h-16 rounded-2xl bg-navy-800 border border-navy-700 flex items-center justify-center mx-auto mb-4">
                             <Plus className="w-8 h-8 text-text-muted" />
@@ -149,7 +201,7 @@ export default function ApiKeysPage() {
                         <h3 className="text-lg font-semibold text-text-primary mb-2">
                             Henüz API key yok
                         </h3>
-                        <p className="text-text-muted text-sm mb-4">
+                        <p className="text-text-muted text-sm">
                             İlk API anahtarınızı oluşturmak için yukarıdaki butona tıklayın
                         </p>
                     </div>
@@ -193,45 +245,95 @@ export default function ApiKeysPage() {
                                             )}
                                         </button>
                                     </div>
-                                    <div className="flex items-center gap-4 mt-2 text-xs text-text-muted">
-                                        <span>
-                                            Oluşturulma:{" "}
-                                            {new Date(apiKey.createdAt).toLocaleDateString("tr-TR")}
-                                        </span>
-                                        <span>
-                                            Son kullanım:{" "}
-                                            {apiKey.lastUsed
-                                                ? new Date(apiKey.lastUsed).toLocaleDateString("tr-TR")
-                                                : "Kullanılmadı"}
-                                        </span>
+                                    <div className="mt-2 text-xs text-text-muted">
+                                        Oluşturulma:{" "}
+                                        {new Date(apiKey.createdAt).toLocaleDateString("tr-TR")}
                                     </div>
                                 </div>
 
                                 <div className="flex items-center gap-2">
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => handleCopy(apiKey.key, apiKey.id)}
-                                        className="text-text-muted hover:text-text-primary"
+                                    {/* Regenerate token dialog */}
+                                    <Dialog
+                                        open={regenerateId === apiKey.id}
+                                        onOpenChange={(o) => {
+                                            if (!o) { setRegenerateId(null); setRegeneratedKey(null); }
+                                        }}
                                     >
-                                        {copied === apiKey.id ? (
-                                            <Check className="w-4 h-4 text-brand-green" />
-                                        ) : (
-                                            <Copy className="w-4 h-4" />
-                                        )}
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => toggleApiKey(apiKey.id)}
-                                        className={
-                                            apiKey.active
-                                                ? "text-brand-green hover:text-brand-green-dark"
-                                                : "text-text-muted hover:text-text-primary"
-                                        }
-                                    >
-                                        <Power className="w-4 h-4" />
-                                    </Button>
+                                        <DialogTrigger asChild>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => setRegenerateId(apiKey.id)}
+                                                className="text-text-muted hover:text-brand-blue"
+                                                title="Token Yenile"
+                                            >
+                                                <RotateCcw className="w-4 h-4" />
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent className="bg-navy-900 border-navy-700 text-text-primary">
+                                            <DialogHeader>
+                                                <DialogTitle>Token Yenile</DialogTitle>
+                                            </DialogHeader>
+
+                                            {!regeneratedKey ? (
+                                                <>
+                                                    <p className="text-sm text-text-muted py-2">
+                                                        <span className="text-yellow-400 font-medium">Dikkat:</span>{" "}
+                                                        &quot;{apiKey.name}&quot; için yeni bir token oluşturulacak.
+                                                        Mevcut token geçersiz hale gelecektir.
+                                                    </p>
+                                                    <DialogFooter>
+                                                        <Button
+                                                            variant="outline"
+                                                            onClick={() => setRegenerateId(null)}
+                                                            className="border-navy-700 text-text-primary bg-transparent"
+                                                        >
+                                                            İptal
+                                                        </Button>
+                                                        <Button
+                                                            onClick={() => handleRegenerate(apiKey.id)}
+                                                            disabled={regeneratingId === apiKey.id}
+                                                            className="bg-brand-blue hover:bg-brand-blue/80 text-white"
+                                                        >
+                                                            {regeneratingId === apiKey.id ? (
+                                                                <span className="flex items-center gap-2">
+                                                                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                                                    Yenileniyor...
+                                                                </span>
+                                                            ) : (
+                                                                "Yenile"
+                                                            )}
+                                                        </Button>
+                                                    </DialogFooter>
+                                                </>
+                                            ) : (
+                                                <div className="py-2">
+                                                    <div className="p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/5 mb-4">
+                                                        <p className="text-sm text-yellow-400">
+                                                            ⚠️ Yeni token bir daha gösterilmeyecek. Güvenli bir yere kaydedin.
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 p-3 rounded-lg bg-navy-800 border border-navy-700">
+                                                        <code className="flex-1 text-sm font-mono text-brand-green break-all">
+                                                            {regeneratedKey}
+                                                        </code>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => handleCopy(regeneratedKey, "regen")}
+                                                            className="flex-shrink-0"
+                                                        >
+                                                            {copied === "regen" ? (
+                                                                <Check className="w-4 h-4 text-brand-green" />
+                                                            ) : (
+                                                                <Copy className="w-4 h-4" />
+                                                            )}
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </DialogContent>
+                                    </Dialog>
 
                                     <Dialog
                                         open={deleteId === apiKey.id}
@@ -243,6 +345,7 @@ export default function ApiKeysPage() {
                                                 size="icon"
                                                 onClick={() => setDeleteId(apiKey.id)}
                                                 className="text-text-muted hover:text-red-400"
+                                                title="Sil"
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </Button>
@@ -265,9 +368,17 @@ export default function ApiKeysPage() {
                                                 </Button>
                                                 <Button
                                                     onClick={() => handleDelete(apiKey.id)}
+                                                    disabled={deletingId === apiKey.id}
                                                     className="bg-red-500 hover:bg-red-600 text-white"
                                                 >
-                                                    Sil
+                                                    {deletingId === apiKey.id ? (
+                                                        <span className="flex items-center gap-2">
+                                                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                                            Siliniyor...
+                                                        </span>
+                                                    ) : (
+                                                        "Sil"
+                                                    )}
                                                 </Button>
                                             </DialogFooter>
                                         </DialogContent>
