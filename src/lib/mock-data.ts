@@ -45,9 +45,9 @@ export const mockRecentRequests: RecentRequest[] = [
 ];
 
 export const mockApiKeys: ApiKey[] = [
-    { id: 'key_1', name: 'Production App', key: 'mock_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6', createdAt: '2024-12-01T10:00:00Z', lastUsed: '2025-01-15T14:30:00Z', active: true },
-    { id: 'key_2', name: 'Test Environment', key: 'mock_test_q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2', createdAt: '2024-12-15T10:00:00Z', lastUsed: '2025-01-14T18:00:00Z', active: true },
-    { id: 'key_3', name: 'Mobile App', key: 'mock_live_g3h4i5j6k7l8m9n0o1p2q3r4s5t6u7v8', createdAt: '2025-01-05T10:00:00Z', lastUsed: null, active: false },
+    { id: 'key_1', name: 'Production App', key: 'mock_live_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6', createdAt: '2024-12-01T10:00:00Z', lastUsed: '2025-01-15T14:30:00Z', active: true, planName: 'Pro', todayRequestCount: 1200, effectiveDailyLimit: 50000, remainingRequests: 48800 },
+    { id: 'key_2', name: 'Test Environment', key: 'mock_test_q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2', createdAt: '2024-12-15T10:00:00Z', lastUsed: '2025-01-14T18:00:00Z', active: true, planName: 'Free', todayRequestCount: 80, effectiveDailyLimit: 100, remainingRequests: 20 },
+    { id: 'key_3', name: 'Mobile App', key: 'mock_live_g3h4i5j6k7l8m9n0o1p2q3r4s5t6u7v8', createdAt: '2025-01-05T10:00:00Z', lastUsed: null, active: false, planName: 'Free', todayRequestCount: 0, effectiveDailyLimit: 100, remainingRequests: 100 },
 ];
 
 export const plans: Plan[] = [

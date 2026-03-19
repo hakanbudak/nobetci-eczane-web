@@ -44,6 +44,10 @@ function mapApiClient(c: any): ApiKey {
         createdAt: c.created_at,
         lastUsed: null,
         active: c.status === 'approved' || c.status === 'active',
+        planName: c.plan?.name ?? '—',
+        todayRequestCount: c.today_request_count ?? 0,
+        effectiveDailyLimit: c.effective_daily_limit ?? null,
+        remainingRequests: c.remaining_requests ?? null,
     };
 }
 

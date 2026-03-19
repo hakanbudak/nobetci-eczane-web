@@ -14,6 +14,10 @@ export interface ApiKey {
   createdAt: string;
   lastUsed: string | null;
   active: boolean;
+  planName: string;
+  todayRequestCount: number;
+  effectiveDailyLimit: number | null;
+  remainingRequests: number | null;
 }
 
 export interface DashboardStats {

@@ -213,7 +213,8 @@ export default function ApiKeysPage() {
                         >
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                 <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-3 mb-2">
+                                    {/* Name + badges */}
+                                    <div className="flex items-center gap-2 mb-2 flex-wrap">
                                         <h4 className="text-sm font-semibold text-text-primary">
                                             {apiKey.name}
                                         </h4>
@@ -227,8 +228,13 @@ export default function ApiKeysPage() {
                                         >
                                             {apiKey.active ? "Aktif" : "Pasif"}
                                         </Badge>
+                                        <Badge variant="outline" className="border-brand-blue/30 text-brand-blue">
+                                            {apiKey.planName}
+                                        </Badge>
                                     </div>
-                                    <div className="flex items-center gap-2">
+
+                                    {/* Token prefix */}
+                                    <div className="flex items-center gap-2 mb-3">
                                         <code className="text-xs font-mono text-text-muted">
                                             {showKeys[apiKey.id] ? apiKey.key : maskKey(apiKey.key)}
                                         </code>
@@ -245,9 +251,54 @@ export default function ApiKeysPage() {
                                             )}
                                         </button>
                                     </div>
-                                    <div className="mt-2 text-xs text-text-muted">
-                                        Oluşturulma:{" "}
-                                        {new Date(apiKey.createdAt).toLocaleDateString("tr-TR")}
+
+                                    {/* Usage stats */}
+                                    <div className="space-y-1.5">
+                                        <div className="flex items-center justify-between text-xs text-text-muted">
+                                            <span>Günlük Kullanım</span>
+                                            <span className="font-mono">
+                                                <span className="text-text-primary font-medium">
+                                                    {apiKey.todayRequestCount.toLocaleString("tr-TR")}
+                                                </span>
+                                                {" / "}
+                                                {apiKey.effectiveDailyLimit !== null
+                                                    ? apiKey.effectiveDailyLimit.toLocaleString("tr-TR")
+                                                    : "∞"}
+                                            </span>
+                                        </div>
+                                        {apiKey.effectiveDailyLimit !== null && (
+                                            <div className="h-1.5 rounded-full bg-navy-700 overflow-hidden">
+                                                <div
+                                                    className="h-full rounded-full bg-brand-green transition-all"
+                                                    style={{
+                                                        width: `${Math.min(
+                                                            100,
+                                                            (apiKey.todayRequestCount / apiKey.effectiveDailyLimit) * 100
+                                                        )}%`,
+                                                        backgroundColor:
+                                                            apiKey.todayRequestCount / apiKey.effectiveDailyLimit > 0.9
+                                                                ? "#ef4444"
+                                                                : apiKey.todayRequestCount / apiKey.effectiveDailyLimit > 0.7
+                                                                ? "#f59e0b"
+                                                                : "#00d97e",
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
+                                        <div className="flex items-center gap-4 text-xs text-text-muted">
+                                            <span>
+                                                Kalan:{" "}
+                                                <span className="text-text-primary font-medium font-mono">
+                                                    {apiKey.remainingRequests !== null
+                                                        ? apiKey.remainingRequests.toLocaleString("tr-TR")
+                                                        : "∞"}
+                                                </span>
+                                            </span>
+                                            <span>
+                                                Oluşturulma:{" "}
+                                                {new Date(apiKey.createdAt).toLocaleDateString("tr-TR")}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
 
