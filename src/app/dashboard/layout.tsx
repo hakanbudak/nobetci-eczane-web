@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAppStore } from "@/lib/store";
@@ -107,8 +107,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     const router = useRouter();
     const { user, logout, fetchUserProfile, fetchApiKeys } = useAppStore();
     const { theme, toggleTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
+        setMounted(true);
         const token = localStorage.getItem('access_token');
         if (!token) {
             router.push('/login');
@@ -126,6 +128,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         logout();
         router.push("/login");
     };
+
+    if (!mounted) {
+        return <div className="min-h-screen bg-navy-950" />;
+    }
 
     return (
         <div className="min-h-screen bg-navy-950 flex">
