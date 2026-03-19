@@ -29,8 +29,8 @@ export default function LoginPage() {
             await login(email, password);
             toast.success("Giriş başarılı!");
             router.push("/dashboard");
-        } catch {
-            toast.error("Giriş başarısız");
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Giriş başarısız");
         } finally {
             setLoading(false);
         }

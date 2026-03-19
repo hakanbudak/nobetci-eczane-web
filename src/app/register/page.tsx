@@ -42,11 +42,11 @@ export default function RegisterPage() {
         }
         setLoading(true);
         try {
-            await register(name, email, password, plan);
+            await register(name, email, password, plan, passwordConfirm);
             toast.success("Hesap oluşturuldu!");
             router.push("/dashboard");
-        } catch {
-            toast.error("Kayıt başarısız");
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : "Kayıt başarısız");
         } finally {
             setLoading(false);
         }
