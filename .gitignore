@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+.vscode/.github/hooks/context-mode.json
+.gitignore
+CLAUDE.md
+.vscode/mcp.json
